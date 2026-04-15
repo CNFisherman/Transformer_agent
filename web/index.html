@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>西电济南变压器企业智能体 - 文档问答</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body { height: 100%; overflow: hidden; margin: 0; padding: 0; }
+        .message-content { white-space: pre-wrap; word-wrap: break-word; }
+        .thinking { font-size: 0.85em; color: #888; background-color: #f5f5f5; padding: 10px 12px; border-radius: 8px; margin: 8px 0; border-left: 3px solid #ccc; }
+        .thinking-title { font-weight: 600; color: #666; margin-bottom: 6px; }
+        .typing-indicator span { animation: bounce 1.4s infinite ease-in-out both; }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        /* 元宝风格 */
+        .input-card { box-shadow: 0 -4px 20px rgba(0,0,0,0.08); }
+        .send-btn { background: linear-gradient(135deg, #12b7f5 0%, #2485f5 100%); }
+        .send-btn:hover { background: linear-gradient(135deg, #0fa0e5 0%, #1075e5 100%); }
+        .icon-btn { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .icon-btn:hover { background: #f3f4f6; }
+        .file-preview { animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .preview-item { background: #f5f5f5; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        .preview-remove { width: 18px; height: 18px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .preview-remove:hover { background: #d1d5db; }
+        
+        /* 文件夹折叠 */
+        .folder-item { cursor: pointer; user-select: none; }
+        .folder-item:hover { background: #f3f4f6; }
+        .folder-children { display: none; }
+        .folder-children.expanded { display: block; }
+        .folder-arrow { transition: transform 0.2s; display: inline-block; width: 12px; }
+        .folder-arrow.expanded { transform: rotate(90deg); }
+        
+        /* 滚动条 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        /* 下载按钮 */
+        .download-btn {
+            padding: 4px 10px;
+            font-size: 12px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        .download-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        /* 涉密标识 */
+        .security-badge {
+            padding: 2px 6px;
+            font-size: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .security-1 { background: #dcfce7; color: #166534; }
+        .security-2 { background: #fef9c3; color: #854d0e; }
+        .security-3 { background: #fed7aa; color: #9a3412; }
+        .security-4 { background: #fecaca; color: #991b1b; }
+        .dark .security-1 { background: #14532d; color: #bbf7d0; }
+        .dark .security-2 { background: #713f12; color: #fef08a; }
+        .dark .security-3 { background: #7c2d12; color: #fed7aa; }
+        .dark .security-4 { background: #7f1d1d; color: #fecaca; }
+
+        /* 深色模式 */
+        :root {
+            --bg-primary: #f9fafb;
+            --bg-secondary: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #374151;
+            --text-muted: #9ca3af;
+            --border-color: #e5e7eb;
+            --hover-bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --input-bg: #ffffff;
+        }
+
+        .dark {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --text-primary: #f9fafb;
+            --text-secondary: #e5e7eb;
+            --text-muted: #9ca3af;
+            --border-color: #374151;
+            --hover-bg: #374151;
+            --card-bg: #1f2937;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --input-bg: #374151;
+        }
+
+        body { background-color: var(--bg-primary); color: var(--text-primary); }
+        .bg-white, .bg-gray-50, .bg-blue-50 { background-color: var(--bg-secondary) !important; }
+        .bg-gray-100 { background-color: var(--hover-bg) !important; }
+        .text-gray-800, .text-gray-700, .text-gray-600 { color: var(--text-secondary) !important; }
+        .text-gray-500, .text-gray-400 { color: var(--text-muted) !important; }
+        .text-gray-300 { color: var(--text-muted) !important; }
+        .border-gray-200, .border-gray-100, .border-b, .border-r, .border-t { border-color: var(--border-color) !important; }
+        .icon-btn:hover, .folder-item:hover { background-color: var(--hover-bg) !important; }
+        .input-card { box-shadow: var(--shadow); background-color: var(--card-bg) !important; position: relative; }
+        .preview-item { background-color: var(--hover-bg) !important; }
+        .preview-remove { background-color: var(--border-color) !important; }
+        .preview-remove:hover { background-color: var(--text-muted) !important; }
+        #question { background-color: var(--input-bg) !important; color: var(--text-primary) !important; }
+        #question::placeholder { color: var(--text-muted) !important; }
+        .typing-indicator span { background-color: var(--text-muted) !important; }
+
+        /* 深色模式 - 特定元素 */
+        .dark .rounded-2xl, .dark .rounded-lg, .dark .rounded-xl { background-color: var(--card-bg) !important; }
+        .dark .bg-gradient-to-br { filter: brightness(0.9); }
+        .dark .shadow-sm { box-shadow: var(--shadow); }
+        .dark ::-webkit-scrollbar-thumb { background: var(--border-color); }
+        .dark .shadow-lg { box-shadow: 0 10px 15px rgba(0,0,0,0.3); }
+        .dark .bg-gray-50 { background-color: var(--hover-bg) !important; }
+        .dark #sourcesList .bg-gray-50 { background-color: var(--hover-bg) !important; }
+        .dark .text-blue-500 { color: #60a5fa !important; }
+        .dark .text-blue-600 { color: #3b82f6 !important; }
+        .dark .bg-blue-50 { background-color: #1e3a5f !important; color: #60a5fa !important; }
+        .dark .hover\:bg-blue-100:hover { background-color: #1e3a5f !important; }
+        .dark .thinking { background-color: #1f2937 !important; border-left-color: #4b5563 !important; }
+        .dark .thinking-title { color: #9ca3af !important; }
+        .dark .text-gray-700 { color: var(--text-secondary) !important; }
+        .dark .text-xs.text-blue-500 { color: #60a5fa !important; }
+        .dark .line-clamp-2 { color: var(--text-muted) !important; }
+        .dark .download-btn { filter: brightness(1.1); }
+    </style>
+</head>
+<body class="bg-gray-50 flex" style="height: 100vh;">
+    <!-- 左侧文件管理栏 -->
+    <div class="w-64 bg-white border-r flex flex-col h-screen">
+        <div class="p-4 border-b">
+            <h2 class="font-bold text-gray-800 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                </svg>
+                文件管理
+            </h2>
+        </div>
+        
+        <div id="fileTree" class="flex-1 overflow-y-auto p-2 text-sm">
+            <div class="text-gray-500 text-center py-4">加载中...</div>
+        </div>
+        
+        <div class="p-3 border-t space-y-2">
+            <div class="upload-zone" id="uploadZone">
+                <input type="file" id="fileInput" class="hidden" multiple accept=".txt,.md,.pdf,.docx">
+                <div class="text-gray-500 text-center py-2 cursor-pointer">
+                    <svg class="w-6 h-6 mx-auto mb-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <p class="text-xs">上传文档</p>
+                </div>
+            </div>
+            
+            <button onclick="rebuildIndex()" class="w-full px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium">
+                重建索引
+            </button>
+        </div>
+    </div>
+    
+    <!-- 主聊天区域 -->
+    <div class="flex-1 flex flex-col">
+        <!-- Header -->
+        <header class="bg-white border-b px-6 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-base font-semibold text-gray-800">西电济南智能助手</h1>
+                        <p class="text-xs text-gray-400">基于 RAG 文档问答</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <!-- 用户信息 -->
+                    <div id="userInfo" class="flex items-center gap-2 px-3 py-1 rounded-lg" style="background: var(--hover-bg)">
+                        <div class="w-6 h-6 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-xs font-medium" id="userAvatar">U</div>
+                        <div class="text-sm">
+                            <span class="font-medium" id="userName">用户名</span>
+                            <span class="text-xs text-gray-500 ml-1" id="userDept">部门</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 深色模式切换 -->
+                    <button id="themeToggle" onclick="toggleTheme()" class="icon-btn" title="切换主题">
+                        <svg id="sunIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <svg id="moonIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                    </button>
+                    
+                    <!-- 登出按钮 -->
+                    <button onclick="logout()" class="icon-btn text-gray-500 hover:text-red-500" title="退出登录">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Messages -->
+        <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-5">
+            <div class="flex gap-3">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                </div>
+                <div class="bg-white rounded-2xl px-4 py-3 max-w-2xl shadow-sm">
+                    <p class="text-gray-700">您好！我是西电济南智能助手，可以根据知识库中的文档回答您的问题。</p>
+                    <p class="text-gray-400 text-sm mt-2">试试问我：<span class="text-blue-500 cursor-pointer hover:underline" onclick="askQuestion('公司有哪些业务？')">公司有哪些业务？</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 参考文档区域 -->
+        <div id="sourcesPanel" class="hidden bg-white border-t mx-6 rounded-t-xl">
+            <div class="px-4 py-3 border-b flex items-center justify-between">
+                <h3 class="font-medium text-gray-700 text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    参考文档
+                </h3>
+                <button onclick="sourcesPanel.classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="sourcesList" class="p-4 grid grid-cols-2 gap-3 max-h-48 overflow-y-auto"></div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="p-4 pt-0">
+            <div class="bg-white rounded-2xl shadow-lg input-card">
+                <!-- 文件预览 -->
+                <div id="filePreview" class="hidden px-4 pt-3 pb-0 flex flex-wrap gap-2"></div>
+
+                <!-- 输入框（支持拖拽） -->
+                <div id="dropZone" class="flex items-end gap-2 px-4 pb-3">
+                    <!-- 附件按钮 -->
+                    <div class="flex items-center gap-1">
+                        <input type="file" id="contextFileInput" class="hidden" multiple accept=".txt,.md,.pdf,.docx,.png,.jpg,.jpeg,.gif">
+                        <button onclick="document.getElementById('contextFileInput').click()" class="icon-btn text-gray-500" title="添加附件">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                            </svg>
+                        </button>
+                        <button onclick="document.getElementById('imageInput').click()" class="icon-btn text-gray-500" title="添加图片">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                        </button>
+                        <input type="file" id="imageInput" class="hidden" accept="image/*">
+                    </div>
+
+                    <textarea id="question" form="chatForm" placeholder="输入您的问题，拖拽文件到此处可添加附件..." rows="1" class="flex-1 resize-none border-0 focus:ring-0 focus:outline-none py-3 text-sm max-h-40" style="min-height: 80px;" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();handleSubmit();}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,160)+'px';"></textarea>
+
+                    <button type="submit" form="chatForm" class="send-btn text-white rounded-lg px-4 py-2 flex items-center gap-1 text-sm font-medium">
+                        <span>发送</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                    </button>
+                </div>
+                <!-- 拖拽提示层 -->
+                <div id="dropOverlay" class="hidden absolute inset-0 bg-blue-50 bg-opacity-90 rounded-2xl flex items-center justify-center pointer-events-none z-10">
+                    <div class="text-center text-blue-500">
+                        <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="font-medium">松开以上传文件</p>
+                    </div>
+                </div>
+            </div>
+            <p class="text-center text-xs text-gray-400 mt-2">上传附件将作为本次对话的参考上下文</p>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg text-white text-sm transform translate-y-20 opacity-0 transition-all duration-300"></div>
+
+    <form id="chatForm" class="hidden" onsubmit="handleSubmit(event)"></form>
+
+    <script>
+        const messagesContainer = document.getElementById('messages');
+        const questionInput = document.getElementById('question');
+        const sourcesPanel = document.getElementById('sourcesPanel');
+        const sourcesList = document.getElementById('sourcesList');
+        const fileTree = document.getElementById('fileTree');
+        const filePreview = document.getElementById('filePreview');
+        const contextFileInput = document.getElementById('contextFileInput');
+        const imageInput = document.getElementById('imageInput');
+        const API_URL = 'http://127.0.0.1:8000/api/v1';
+        
+        // 上下文文件列表
+        let contextFiles = [];
+        
+        // 安全等级映射
+        const SECURITY_LEVELS = {1: '公开', 2: '内部', 3: '机密', 4: '绝密'};
+        
+        // ============ 登录检查 ============
+        async function checkAuth() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Unauthorized');
+                }
+                
+                const user = await response.json();
+                updateUserInfo(user);
+                return true;
+            } catch (e) {
+                localStorage.removeItem('access_token');
+                window.location.href = 'login.html';
+                return false;
+            }
+        }
+        
+        function updateUserInfo(user) {
+            document.getElementById('userAvatar').textContent = (user.full_name || user.username || 'U').charAt(0).toUpperCase();
+            document.getElementById('userName').textContent = user.full_name || user.username;
+            document.getElementById('userDept').textContent = user.department || '';
+        }
+        
+        async function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_info');
+            window.location.href = 'login.html';
+        }
+        
+        // 获取认证头
+        function getAuthHeaders() {
+            const token = localStorage.getItem('access_token');
+            return {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+        
+        // 文件下载
+        async function downloadFile(docId, filename) {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_URL}/documents/download/${docId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    const err = await response.json();
+                    showToast('下载失败: ' + (err.detail || '没有权限'), 'error');
+                    return;
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename || 'document';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showToast('下载成功', 'success');
+            } catch (e) {
+                showToast('下载失败', 'error');
+            }
+        }
+
+        // ============ 深色模式 ============
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon(isDark);
+        }
+
+        function updateThemeIcon(isDark) {
+            document.getElementById('sunIcon').classList.toggle('hidden', !isDark);
+            document.getElementById('moonIcon').classList.toggle('hidden', isDark);
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            const isDark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('dark', isDark);
+            updateThemeIcon(isDark);
+        }
+
+        initTheme();
+
+        // ============ 文件拖拽上传 ============
+        const dropZone = document.getElementById('dropZone');
+        const dropOverlay = document.getElementById('dropOverlay');
+        const inputCard = document.querySelector('.input-card');
+
+        // 防止默认行为
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+            dropZone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
+        });
+
+        // 拖拽进入时显示提示
+        dropZone.addEventListener('dragenter', () => dropOverlay.classList.remove('hidden'));
+        dropZone.addEventListener('dragover', () => dropOverlay.classList.remove('hidden'));
+
+        // 拖拽离开时隐藏提示
+        dropZone.addEventListener('dragleave', (e) => {
+            if (!dropZone.contains(e.relatedTarget)) {
+                dropOverlay.classList.add('hidden');
+            }
+        });
+
+        // 松开鼠标时处理文件
+        dropZone.addEventListener('drop', async (e) => {
+            dropOverlay.classList.add('hidden');
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length === 0) return;
+
+            for (const file of files) {
+                const text = await readFileAsText(file);
+                contextFiles.push({ name: file.name, content: text, type: file.type });
+            }
+            renderFilePreview();
+            showToast(`已添加 ${files.length} 个文件，发送消息时将一并发送`, 'info');
+        });
+
+        // ============ 文件管理 ============
+        let collapsedFolders = new Set(); // 默认全部折叠
+        
+        async function loadFiles() {
+            try {
+                const res = await fetch(`${API_URL}/files`, {
+                    headers: getAuthHeaders()
+                });
+                const data = await res.json();
+                if (!data.tree || data.tree.length === 0) {
+                    fileTree.innerHTML = '<div class="text-gray-400 text-center py-4 text-sm">暂无文件</div>';
+                    return;
+                }
+                fileTree.innerHTML = '<div class="space-y-1"></div>';
+                const container = fileTree.firstChild;
+                
+                function renderItems(items, container, depth = 0) {
+                    items.forEach(item => {
+                        if (item.is_dir) {
+                            const id = 'folder-' + item.path.replace(/[^a-zA-Z0-9]/g, '_');
+                            const isExpanded = collapsedFolders.has(item.path); // 如果在 Set 里就是展开状态
+                            const div = document.createElement('div');
+                            div.innerHTML = `
+                                <div class="folder-item flex items-center gap-1 py-1 px-2 rounded text-gray-600" style="padding-left:${depth * 12 + 8}px" onclick="toggleFolder('${item.path}', '${id}', this)">
+                                    <span class="folder-arrow ${isExpanded ? 'expanded' : ''}">▶</span>
+                                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
+                                    <span class="text-sm font-medium flex-1">${item.name}</span>
+                                    ${item.children ? `<span class="text-xs text-gray-400">${item.children.length}</span>` : ''}
+                                </div>
+                                <div class="folder-children ${isExpanded ? 'expanded' : ''}" id="${id}"></div>
+                            `;
+                            container.appendChild(div);
+                            const childContainer = div.lastElementChild;
+                            if (item.children) renderItems(item.children, childContainer, depth + 1);
+                        } else {
+                            const ext = item.name.split('.').pop().toLowerCase();
+                            const icon = {'pdf':'📄','docx':'📝','txt':'📃','md':'📋'}[ext] || '📄';
+                            const div = document.createElement('div');
+                            div.className = 'flex items-center gap-2 py-1 px-2 rounded text-gray-600 hover:bg-gray-100 cursor-pointer';
+                            div.style.paddingLeft = (depth * 12 + 28) + 'px';
+                            div.innerHTML = `<span>${icon}</span><span class="flex-1 truncate text-sm">${item.name}</span>`;
+                            container.appendChild(div);
+                        }
+                    });
+                }
+                
+                renderItems(data.tree, container);
+            } catch (e) {
+                fileTree.innerHTML = '<div class="text-red-400 text-center py-4 text-sm">加载失败</div>';
+            }
+        }
+        
+        function toggleFolder(path, id, el) {
+            const child = document.getElementById(id);
+            const arrow = el.querySelector('.folder-arrow');
+            if (collapsedFolders.has(path)) {
+                // 当前是展开的，点击后折叠
+                collapsedFolders.delete(path);
+                child.classList.remove('expanded');
+                arrow.classList.remove('expanded');
+            } else {
+                // 当前是折叠的，点击后展开
+                collapsedFolders.add(path);
+                child.classList.add('expanded');
+                arrow.classList.add('expanded');
+            }
+        }
+        
+        // 上传文档到知识库
+        const uploadZone = document.getElementById('uploadZone');
+        const docInput = document.getElementById('fileInput');
+        uploadZone.addEventListener('click', () => docInput.click());
+        docInput.addEventListener('change', async () => {
+            for (const file of docInput.files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('folder', '');
+                try {
+                    const token = localStorage.getItem('access_token');
+                    const res = await fetch(`${API_URL}/files/upload`, { 
+                        method: 'POST', 
+                        body: formData,
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await res.json();
+                    showToast(data.message, data.success ? 'success' : 'error');
+                } catch (e) { showToast('上传失败', 'error'); }
+            }
+            loadFiles();
+        });
+        
+        async function rebuildIndex() {
+            showToast('正在重建索引...', 'info');
+            try {
+                const res = await fetch(`${API_URL}/ingest`, { 
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const data = await res.json();
+                showToast(data.message, data.success ? 'success' : 'error');
+            } catch (e) { showToast('重建失败', 'error'); }
+        }
+        
+        // ============ 上下文文件 ============
+        contextFileInput.addEventListener('change', () => handleContextFiles(contextFileInput.files));
+        imageInput.addEventListener('change', () => handleContextFiles(imageInput.files));
+        
+        async function handleContextFiles(files) {
+            for (const file of files) {
+                const text = await readFileAsText(file);
+                contextFiles.push({ name: file.name, content: text, type: file.type });
+            }
+            renderFilePreview();
+        }
+        
+        function readFileAsText(file) {
+            return new Promise((resolve) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(`[图片: ${file.name}]`);
+                    reader.readAsDataURL(file);
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.readAsText(file);
+                }
+            });
+        }
+        
+        function renderFilePreview() {
+            if (contextFiles.length === 0) {
+                filePreview.classList.add('hidden');
+                return;
+            }
+            filePreview.classList.remove('hidden');
+            filePreview.innerHTML = contextFiles.map((f, i) => `
+                <div class="file-preview preview-item">
+                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span class="flex-1 truncate">${f.name}</span>
+                    <div class="preview-remove" onclick="removeContextFile(${i})">×</div>
+                </div>
+            `).join('');
+        }
+        
+        function removeContextFile(index) {
+            contextFiles.splice(index, 1);
+            renderFilePreview();
+        }
+        
+        // ============ 聊天功能 ============
+        function askQuestion(q) {
+            questionInput.value = q;
+            handleSubmit(new Event('submit'));
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function formatContent(content) {
+            content = content.replace(/<thinking>([\s\S]*?)<\/thinking>/g, (match, thinking) => {
+                return `<div class="thinking"><div class="thinking-title">🤔 推理过程：</div>${escapeHtml(thinking.trim())}</div>`;
+            });
+            return content;
+        }
+        
+        function addMessage(content, isUser, sources = []) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-3';
+            
+            if (isUser) {
+                div.innerHTML = `
+                    <div class="ml-auto bg-gradient-to-br from-blue-400 to-blue-600 text-white rounded-2xl px-4 py-3 max-w-xl text-sm">
+                        ${escapeHtml(content)}
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0 text-white font-medium text-sm">U</div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                    </div>
+                    <div class="bg-white rounded-2xl px-4 py-3 max-w-2xl shadow-sm">
+                        <div class="message-content">${formatContent(content)}</div>
+                    </div>
+                `;
+            }
+            
+            messagesContainer.appendChild(div);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            if (!isUser && sources.length > 0) {
+                sourcesList.innerHTML = sources.map((s, idx) => {
+                    const securityLevel = s.security_level || 1;
+                    const securityName = SECURITY_LEVELS[securityLevel] || '未知';
+                    const filename = s.source || s.title || '未知文件';
+                    
+                    return `
+                    <div class="bg-gray-50 rounded-lg p-3 text-sm relative group">
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <div class="font-medium text-gray-700 flex items-center gap-2 flex-1 min-w-0">
+                                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <span class="truncate" title="${escapeHtml(filename)}">${escapeHtml(filename)}</span>
+                                <span class="security-badge security-${securityLevel} flex-shrink-0">${securityName}</span>
+                            </div>
+                            ${s.doc_id ? `
+                            <button onclick="downloadFile(${s.doc_id}, '${escapeHtml(filename.replace(/'/g, "\\'"))}')" 
+                                    class="download-btn flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                下载
+                            </button>
+                            ` : ''}
+                        </div>
+                        <div class="text-gray-500 text-xs line-clamp-2">${escapeHtml(s.content || '')}</div>
+                    </div>
+                `}).join('');
+                sourcesPanel.classList.remove('hidden');
+            }
+        }
+        
+        function addTypingIndicator() {
+            const div = document.createElement('div');
+            div.id = 'typing';
+            div.className = 'flex gap-3';
+            div.innerHTML = `
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                </div>
+                <div class="bg-white rounded-2xl px-4 py-3 shadow-sm">
+                    <div class="typing-indicator">
+                        <span class="inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                        <span class="inline-block w-2 h-2 bg-gray-400 rounded-full mx-1"></span>
+                        <span class="inline-block w-2 h-2 bg-gray-400 rounded-full"></span>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(div);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function removeTypingIndicator() {
+            const typing = document.getElementById('typing');
+            if (typing) typing.remove();
+        }
+        
+        async function handleSubmit(e) {
+            if (e) e.preventDefault();
+            const q = questionInput.value.trim();
+            if (!q) return;
+            
+            // 构建带上下文的提问
+            let fullQuestion = q;
+            if (contextFiles.length > 0) {
+                const contextText = contextFiles.map(f => `[附件: ${f.name}]\n${f.content}`).join('\n\n');
+                fullQuestion = `【参考上下文】\n${contextText}\n\n【问题】\n${q}`;
+            }
+            
+            addMessage(q, true);
+            questionInput.value = '';
+            questionInput.style.height = 'auto';
+            filePreview.classList.add('hidden');
+            contextFiles = [];
+            addTypingIndicator();
+            
+            try {
+                const res = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({question: fullQuestion})
+                });
+                const data = await res.json();
+                removeTypingIndicator();
+                
+                if (data.error) {
+                    addMessage('抱歉，发生错误: ' + data.error, false);
+                } else {
+                    addMessage(data.answer, false, data.sources || []);
+                }
+            } catch (e) {
+                removeTypingIndicator();
+                addMessage('抱歉，发生错误: API 请求失败', false);
+            }
+        }
+        
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg text-white text-sm transition-all duration-300 ' + 
+                (type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+            toast.style.transform = 'translate(-50%, 0)';
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.transform = 'translate(-50%, 20px)';
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+        
+        loadFiles();
+    </script>
+</body>
+</html>

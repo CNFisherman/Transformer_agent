@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 西电济南变压器企业智能体</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-primary: #f9fafb;
+            --bg-secondary: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #374151;
+        }
+        .dark {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --text-primary: #f9fafb;
+            --text-secondary: #e5e7eb;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+        .login-card {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .input-field {
+            background: #f3f4f6;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .input-field:focus {
+            background: #fff;
+            border-color: #667eea;
+            outline: none;
+        }
+        .dark .input-field {
+            background: #374151;
+            color: #f9fafb;
+        }
+        .dark .input-field:focus {
+            background: #1f2937;
+            border-color: #818cf8;
+        }
+        .login-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card w-full max-w-md mx-4">
+        <!-- Logo 区域 -->
+        <div class="bg-gradient-to-r from-blue-500 to-purple-600 px-8 py-6 text-center">
+            <div class="w-16 h-16 rounded-full bg-white/20 mx-auto mb-3 flex items-center justify-center">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-white">企业智能体</h1>
+            <p class="text-white/80 text-sm mt-1">西电济南变压器文档问答系统</p>
+        </div>
+
+        <!-- 登录表单 -->
+        <div class="p-8">
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="mb-5">
+                    <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary)">
+                        用户名
+                    </label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        class="input-field w-full px-4 py-3 rounded-lg text-sm"
+                        placeholder="请输入用户名"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary)">
+                        密码
+                    </label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="input-field w-full px-4 py-3 rounded-lg text-sm"
+                        placeholder="请输入密码"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <div id="errorMsg" class="hidden mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm"></div>
+
+                <button 
+                    type="submit" 
+                    id="loginBtn"
+                    class="login-btn w-full py-3 rounded-lg text-white font-medium"
+                >
+                    登录
+                </button>
+            </form>
+
+            <!-- 提示信息 -->
+            <div class="mt-6 p-4 rounded-lg" style="background: var(--bg-primary)">
+                <p class="text-xs" style="color: var(--text-secondary)">
+                    <span class="font-medium">测试账号：</span><br>
+                    管理员：admin / admin123<br>
+                    普通用户：test / test123
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000/api/v1';
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const loginBtn = document.getElementById('loginBtn');
+
+            if (!username || !password) {
+                errorMsg.textContent = '请输入用户名和密码';
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            errorMsg.classList.add('hidden');
+            loginBtn.disabled = true;
+            loginBtn.textContent = '登录中...';
+
+            try {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.detail || '登录失败');
+                }
+
+                const data = await response.json();
+                
+                // 保存 token
+                localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('token_type', data.token_type);
+                localStorage.setItem('username', username);
+
+                // 获取用户信息
+                await loadUserInfo();
+
+                // 跳转到主页面
+                window.location.href = 'index.html';
+
+            } catch (error) {
+                errorMsg.textContent = error.message;
+                errorMsg.classList.remove('hidden');
+                loginBtn.disabled = false;
+                loginBtn.textContent = '登录';
+            }
+        }
+
+        async function loadUserInfo() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_URL}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const user = await response.json();
+                    localStorage.setItem('user_info', JSON.stringify(user));
+                }
+            } catch (e) {
+                console.error('获取用户信息失败:', e);
+            }
+        }
+
+        // 检查是否已登录
+        async function checkLogin() {
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${API_URL}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    window.location.href = 'index.html';
+                } else {
+                    localStorage.removeItem('access_token');
+                }
+            } catch (e) {
+                localStorage.removeItem('access_token');
+            }
+        }
+
+        checkLogin();
+    </script>
+</body>
+</html>
