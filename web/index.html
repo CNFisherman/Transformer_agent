@@ -141,7 +141,7 @@
 </head>
 <body class="bg-gray-50 flex" style="height: 100vh;">
     <!-- 左侧文件管理栏 -->
-    <div class="w-64 bg-white border-r flex flex-col h-screen">
+    <div id="fileSidebar" class="w-64 bg-white border-r flex flex-col h-screen">
         <div class="p-4 border-b">
             <h2 class="font-bold text-gray-800 flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -228,7 +228,7 @@
                 </div>
                 <div class="bg-white rounded-2xl px-4 py-3 max-w-2xl shadow-sm">
                     <p class="text-gray-700">您好！我是西电济南智能助手，可以根据知识库中的文档回答您的问题。</p>
-                    <p class="text-gray-400 text-sm mt-2">试试问我：<span class="text-blue-500 cursor-pointer hover:underline" onclick="askQuestion('公司有哪些业务？')">公司有哪些业务？</span></p>
+                    <p class="text-gray-400 text-sm mt-2">支持文档问答和故障诊断，试试问我：<span class="text-blue-500 cursor-pointer hover:underline" onclick="askQuestion('公司有哪些业务？')">公司有哪些业务？</span> 或 <span class="text-orange-500 cursor-pointer hover:underline" onclick="askQuestion('变压器油温过高如何处理？')">变压器油温过高如何处理？</span></p>
                 </div>
             </div>
         </div>
@@ -351,6 +351,25 @@
             document.getElementById('userAvatar').textContent = (user.full_name || user.username || 'U').charAt(0).toUpperCase();
             document.getElementById('userName').textContent = user.full_name || user.username;
             document.getElementById('userDept').textContent = user.department || '';
+            
+            // 保存用户信息到本地
+            localStorage.setItem('user_info', JSON.stringify(user));
+            
+            // 根据角色控制文件管理显示
+            const isAdmin = user.roles && user.roles.some(r => 
+                r === '系统管理员' || r === 'admin' || r === 'Admin'
+            );
+            
+            const sidebar = document.getElementById('fileSidebar');
+            if (sidebar) {
+                sidebar.style.display = isAdmin ? 'flex' : 'none';
+            }
+            
+            // 调整主聊天区域宽度
+            const mainArea = document.querySelector('.flex-1.flex.flex-col');
+            if (mainArea) {
+                mainArea.className = isAdmin ? 'flex-1 flex flex-col' : 'flex-1 flex flex-col';
+            }
         }
         
         async function logout() {
@@ -395,6 +414,13 @@
             } catch (e) {
                 showToast('下载失败', 'error');
             }
+        }
+        
+        // 根据路径下载文件（用于参考文档）
+        function downloadByPath(filePath, filename) {
+            const token = localStorage.getItem('access_token');
+            const url = `${API_URL}/documents/download-by-path?path=${encodeURIComponent(filePath)}`;
+            window.open(url, '_blank');
         }
 
         // ============ 深色模式 ============
@@ -655,6 +681,7 @@
                     const securityLevel = s.security_level || 1;
                     const securityName = SECURITY_LEVELS[securityLevel] || '未知';
                     const filename = s.source || s.title || '未知文件';
+                    const filePath = s.source || '';
                     
                     return `
                     <div class="bg-gray-50 rounded-lg p-3 text-sm relative group">
@@ -666,15 +693,26 @@
                                 <span class="truncate" title="${escapeHtml(filename)}">${escapeHtml(filename)}</span>
                                 <span class="security-badge security-${securityLevel} flex-shrink-0">${securityName}</span>
                             </div>
-                            ${s.doc_id ? `
-                            <button onclick="downloadFile(${s.doc_id}, '${escapeHtml(filename.replace(/'/g, "\\'"))}')" 
-                                    class="download-btn flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                </svg>
-                                下载
-                            </button>
-                            ` : ''}
+                            <div class="flex items-center gap-1">
+                                ${filePath ? `
+                                <button onclick="downloadByPath('${escapeHtml(filePath.replace(/'/g, "\\'"))}', '${escapeHtml(filename.replace(/'/g, "\\'"))}')" 
+                                        class="text-xs text-blue-500 hover:text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                    </svg>
+                                    下载
+                                </button>
+                                ` : ''}
+                                ${s.doc_id ? `
+                                <button onclick="downloadFile(${s.doc_id}, '${escapeHtml(filename.replace(/'/g, "\\'"))}')" 
+                                        class="text-xs text-green-500 hover:text-green-700 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                    </svg>
+                                    下载
+                                </button>
+                                ` : ''}
+                            </div>
                         </div>
                         <div class="text-gray-500 text-xs line-clamp-2">${escapeHtml(s.content || '')}</div>
                     </div>
@@ -710,6 +748,14 @@
             if (typing) typing.remove();
         }
         
+        // 故障关键词列表
+        const FAULT_KEYWORDS = ['故障', '维修', '检修', '保养', '异常', '报警', '报警', '问题', '损坏', '失效', '停机', '跳闸', '短路', '接地', '温度高', '过热', '油位', '渗油', '漏油', '声响', '噪音', '振动', '跳变'];
+        
+        function isFaultRelated(question) {
+            const q = question.toLowerCase();
+            return FAULT_KEYWORDS.some(kw => q.includes(kw));
+        }
+        
         async function handleSubmit(e) {
             if (e) e.preventDefault();
             const q = questionInput.value.trim();
@@ -730,16 +776,29 @@
             addTypingIndicator();
             
             try {
-                const res = await fetch(`${API_URL}/chat`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({question: fullQuestion})
-                });
-                const data = await res.json();
+                let res, data;
+                
+                if (isFaultRelated(q)) {
+                    // 故障相关问题，调用故障诊断接口
+                    res = await fetch(`${API_URL}/fault/diagnose`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({fault_desc: fullQuestion})
+                    });
+                } else {
+                    // 普通问答，调用聊天接口
+                    res = await fetch(`${API_URL}/chat`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({question: fullQuestion})
+                    });
+                }
+                
+                data = await res.json();
                 removeTypingIndicator();
                 
-                if (data.error) {
-                    addMessage('抱歉，发生错误: ' + data.error, false);
+                if (data.error || data.detail) {
+                    addMessage('抱歉，发生错误: ' + (data.error || data.detail), false);
                 } else {
                     addMessage(data.answer, false, data.sources || []);
                 }
@@ -762,7 +821,24 @@
             }, 2000);
         }
         
-        loadFiles();
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', async () => {
+            const isAuth = await checkAuth();
+            if (isAuth) {
+                // 根据已保存的用户信息控制侧边栏
+                const userInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
+                const isAdmin = userInfo.roles && userInfo.roles.some(r => 
+                    r === '系统管理员' || r === 'admin' || r === 'Admin'
+                );
+                
+                if (isAdmin) {
+                    loadFiles();
+                } else {
+                    const sidebar = document.getElementById('fileSidebar');
+                    if (sidebar) sidebar.style.display = 'none';
+                }
+            }
+        });
     </script>
 </body>
 </html>

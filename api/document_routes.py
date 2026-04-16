@@ -303,3 +303,31 @@ async def get_access_logs(
         }
         for log in logs
     ]
+
+
+@router.get("/download-by-path")
+async def download_by_path(
+    path: str,
+    current_user: User = Depends(get_current_user)
+):
+    """根据路径下载文档（用于知识库参考文档）"""
+    # 安全检查：只允许下载特定目录下的文件
+    allowed_prefixes = ["documents/raw/", "raw/"]
+    path_clean = path.strip("/")
+    
+    is_allowed = any(path_clean.startswith(prefix.rstrip("/")) for prefix in allowed_prefixes)
+    if not is_allowed:
+        raise HTTPException(status_code=403, detail="不允许下载此路径的文件")
+    
+    file_path = Path(path_clean)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="文件不存在")
+    
+    # 获取文件名
+    filename = file_path.name
+    
+    return FileResponse(
+        path=str(file_path),
+        filename=filename,
+        media_type="application/octet-stream"
+    )

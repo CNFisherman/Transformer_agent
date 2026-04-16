@@ -2,6 +2,10 @@
 documents/*
 !documents/metadata.json
 
+# 故障处理文档（单独管理）
+raw/
+!raw/故障处理/README.md
+
 # Python
 __pycache__/
 *.py[cod]

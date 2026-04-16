@@ -5,11 +5,13 @@ from typing import List
 from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 import shutil
 
 from api.routes import chat
 from api.routes.auth_routes import router as auth_router
+from api.routes.fault_routes import router as fault_router
 from config.settings import settings
 from src.models import init_db
 from src.auth import init_default_data
@@ -32,6 +34,16 @@ app.add_middleware(
 # 注册路由
 app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(fault_router, prefix="/api/v1")
+
+# 挂载静态文件
+web_path = Path(__file__).parent.parent / "web"
+app.mount("/web", StaticFiles(directory=str(web_path)), name="web")
+
+@app.get("/")
+async def root():
+    """根路径重定向到登录页"""
+    return RedirectResponse(url="/web/login.html")
 
 
 # ============ 文件管理接口 ============
